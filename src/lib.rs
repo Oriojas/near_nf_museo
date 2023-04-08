@@ -2,7 +2,7 @@ use std::path::Prefix;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::UnorderedMap;
 use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{near_bindgen, setup_alloc};
+use near_sdk::{near_bindgen, setup_alloc, env};
 
 setup_alloc!(); // paa saber la dirección de WASM en memoria
 
@@ -33,12 +33,12 @@ impl Default for Meme {
 // implementación del metódo new para crear nuevos memes
 impl Meme {
     pub fn new(titulo: String, url: String, museo: String) -> Self {
-        Self { id: 0,
-            creado_por: String::from(""),
-            titulo,
-            museo,
-            url,
-            donaciones: 0,
+        Self {  id: env::block_index(),
+                creado_por: env::signer_account_id().to_string(),
+                titulo,
+                museo,
+                url,
+                donaciones: 0,
         }
     }
     
