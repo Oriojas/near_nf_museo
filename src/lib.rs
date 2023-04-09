@@ -1,18 +1,18 @@
 use std::path::Prefix;
+use std::str::FromStr;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::UnorderedMap;
 use near_sdk::env::attached_deposit;
 use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{near_bindgen, setup_alloc, env, Promise};
+use near_sdk::{near_bindgen, env, Promise, AccountId};
 
-setup_alloc!(); // paa saber la dirección de WASM en memoria
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
 #[serde(crate="near_sdk::serde")] // para serializar algo que venga originalmente en formato json
 
 pub struct Meme {
     pub id: u64,
-    pub creado_por: String,
+    pub creado_por: AccountId,
     pub titulo: String,
     pub museo: String,
     pub url: String,
@@ -23,7 +23,7 @@ pub struct Meme {
 impl Default for Meme {
     fn default() -> Self {
         Meme { id: 0,
-            creado_por: String::from(""), // string vacío
+            creado_por: "".parse().unwrap(), //String::from("")
             titulo: String::from(""), // string vacío
             museo: String::from(""), // string vacío
             url: String::from(""), // string vacío
@@ -34,8 +34,8 @@ impl Default for Meme {
 // implementación del metódo new para crear nuevos memes
 impl Meme {
     pub fn new(titulo: String, url: String, museo: String) -> Self {
-        Self {  id: env::block_index(),
-                creado_por: env::signer_account_id().to_string(),
+        Self {  id: env::block_height(),
+                creado_por: env::signer_account_id(),
                 titulo,
                 museo,
                 url,
@@ -51,7 +51,7 @@ impl Meme {
 pub struct SimpleMemeMuseum {
     // se guardan solo los ID para evitar tener que editar en ambos lugares
     museos: UnorderedMap<String, Vec<u64>>, // esta estructura requiere dos valores la clave y el valor
-    nemes: UnorderedMap<u64, Meme>, // esta estructura requiere dos valores la clave y el valor
+    memes: UnorderedMap<u64, Meme>, // esta estructura requiere dos valores la clave y el valor
 
 }
 
@@ -60,8 +60,8 @@ impl Default for SimpleMemeMuseum {
     fn default() -> Self {
         Self {  
             // inicialización de colecciones
-            museos: UnorderedMap::new(prefix: b"u".to_vect()),
-            memes: UnorderedMap::new(prefix: b"u".to_vect()),
+            museos: UnorderedMap::new(b"u".to_vec()),
+            memes: UnorderedMap::new(b"u".to_vec()),
         }
     }
     
@@ -113,17 +113,17 @@ impl SimpleMemeMuseum {
 
     // metodo para obtener el meme
     pub fn obtener_meme(&self, id: u64) -> Option<Meme> {
-        self.memes.get(&id);
+        self.memes.get(&id)
     }
 
     // metodo de solo lectura retorna un vector con la colexión de memes
-    pub fn obtener_lista_memes(&self) -> Vec<u64, Meme> {
-        self.memes.to_vec();
+    pub fn obtener_lista_memes(&self) -> Vec<(u64, Meme)> {
+        self.memes.to_vec()
     }
 
     // retorna la lista de museos, toma los key de la colección y lo convierte a vector
     pub fn obtener_lista_mueseos(&self) -> Vec<String> {
-        self.museos.keys_as_vector().to_vec();
+        self.museos.keys_as_vector().to_vec()
     }
 
     // retorna un vector con los memes del museo
@@ -163,19 +163,19 @@ impl SimpleMemeMuseum {
             "Debes agragar NEAR para hacer una donación"
         );
         // buscamos el meme
-        match self.memes.get(&id) {
+        match self.memes.get(&id) { // match es como un swicht
             Some(mut meme) => {
                 // si existe guardamos la donación del registro
                 meme.donaciones += env::attached_deposit();
                 self.memes.insert(&meme.id, &meme);
     
                 // y le trasferimos al creador del meme la donación
-                Promise::new(String::from(&meme.creado_por)).trasnfer(env::attached_deposit());
+                Promise::new(meme.creado_por).transfer(env::attached_deposit());
     
                 true
             }
             None => false,
         }
-        
+
     }
 }
